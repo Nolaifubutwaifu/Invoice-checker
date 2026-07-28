@@ -123,6 +123,14 @@ it with:
 Unregister-ScheduledTask -TaskName "Brisbins Invoice Checker" -Confirm:$false
 ```
 
+## Planned work
+
+[INTEGRATION_PLAN.md](INTEGRATION_PLAN.md) covers feeding this project and the
+inventory-app into one database, so sold stock can be reconciled against counted
+stock. Nothing is built yet. It also records a **known bug**: the colour list in
+`src/parse.js` misreads 6 of the 19 colours actually in the product catalog
+(`Council Green` and `Ugly Red` collapse to `Green` and `Red`), silently.
+
 ## Tests
 
 ```bash
