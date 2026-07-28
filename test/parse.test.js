@@ -64,6 +64,61 @@ test('American spelling is normalised to grey', () => {
   assert.equal(parseLineItem('240L bin gray complete').binColour, 'Grey');
 });
 
+test.describe('every colour in the product catalog', () => {
+  // The full colour list from the inventory-app catalog. Six of these used to
+  // collapse to their base word — "Council Green" came back as "Green" — which
+  // silently invented products that do not exist.
+  const catalogColours = [
+    'Black', 'Council Green', 'Dark Green', 'Dark Grey', 'Grass Green',
+    'Light Blue', 'Light Grey', 'Lime Green', 'Mud Green', 'Orange', 'Purple',
+    'Red', 'Red (AJ Bush)', 'Royal Blue', 'Sky Blue', 'Ugly Purple', 'Ugly Red',
+    'White', 'Yellow',
+  ];
+
+  for (const colour of catalogColours) {
+    test(`reads "${colour}" whole`, () => {
+      const r = parseLineItem(`240L bin ${colour} complete`);
+      assert.equal(r.binColour, colour);
+      assert.equal(r.lidColour, colour);
+      assert.deepEqual(r.review, [], 'a catalog colour should never be flagged');
+    });
+
+    test(`reads "${colour}" written in lower case`, () => {
+      assert.equal(parseLineItem(`240L bin ${colour.toLowerCase()} complete`).binColour, colour);
+    });
+  }
+});
+
+test('a qualified colour beats the bare colour inside it', () => {
+  // The whole point of the fix: longest match wins.
+  assert.equal(parseLineItem('240L bin council green complete').binColour, 'Council Green');
+  assert.equal(parseLineItem('240L bin green complete').binColour, 'Green');
+});
+
+test('a colour outside the catalog is recorded but flagged', () => {
+  const r = parseLineItem('240L bin teal complete');
+  assert.equal(r.binColour, 'Teal');
+  assert.ok(
+    r.review.some((m) => m.includes('not in the product catalog')),
+    'expected an off-catalog colour to be flagged',
+  );
+});
+
+test('punctuation in a colour name is optional', () => {
+  assert.equal(parseLineItem('240L bin Red (AJ Bush) complete').binColour, 'Red (AJ Bush)');
+  assert.equal(parseLineItem('240L bin Red AJ Bush complete').binColour, 'Red (AJ Bush)');
+});
+
+test('a colour name is not matched inside a longer word', () => {
+  assert.equal(parseLineItem('240L bin Greenway complete').binColour, '');
+});
+
+test('the variant survives a colour containing punctuation', () => {
+  const r = parseLineItem('240L Vermin lid Red (AJ Bush)');
+  assert.equal(r.lidColour, 'Red (AJ Bush)');
+  assert.equal(r.variant, 'Vermin');
+});
+
 test.describe('lines that are not bin or lid sales', () => {
   const notProducts = [
     '1100L Lid Pins',

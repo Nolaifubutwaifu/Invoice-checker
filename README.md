@@ -90,11 +90,15 @@ A line counts as a sale when it names a bin or a lid and is not a spare part. An
 accessory bundled onto a bin (`240L Bin Green Complete with Lock`) still counts
 as a bin sale.
 
-Colours are matched against a vocabulary in `src/parse.js` (`BASE_COLOURS` and
-`MODIFIERS`), which handles two-word colours like `Dark Green` and normalises
-`gray` to `Grey`. **If a colour is ever missed, add it to `BASE_COLOURS` and run
-`npm run rebuild`** — it will show up on the "Needs review" sheet in the
-meantime.
+Colours are matched against `CATALOG_COLOURS` in `src/parse.js` — the colours
+that actually exist in the product catalog — longest name first, so
+`Council Green` is never read as `Green`. Alternative spellings (`gray`,
+`Red AJ Bush`) are normalised to the catalog's own wording.
+
+A colour that is recognised but is **not** in the catalog is still recorded, and
+flagged on the "Needs review" sheet. That usually means a genuinely new product
+— add it to `CATALOG_COLOURS` and run `npm run rebuild` — or a description that
+was misread.
 
 ## Notes
 
@@ -127,9 +131,11 @@ Unregister-ScheduledTask -TaskName "Brisbins Invoice Checker" -Confirm:$false
 
 [INTEGRATION_PLAN.md](INTEGRATION_PLAN.md) covers feeding this project and the
 inventory-app into one database, so sold stock can be reconciled against counted
-stock. Nothing is built yet. It also records a **known bug**: the colour list in
-`src/parse.js` misreads 6 of the 19 colours actually in the product catalog
-(`Council Green` and `Ugly Red` collapse to `Green` and `Red`), silently.
+stock. Nothing is built yet.
+
+Phase 1 of that plan will have this project read the colour list from the
+catalog directly. Until then `CATALOG_COLOURS` in `src/parse.js` is a copy of
+it, and the two can drift.
 
 ## Tests
 

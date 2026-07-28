@@ -104,34 +104,25 @@ Field mapping:
 So no fuzzy-matching layer is needed for the common case. That is normally the
 expensive part of this kind of integration and it is already done.
 
-## Blocker 1 — the colour vocabulary is wrong, and fails silently
+## Blocker 1 — the colour vocabulary — FIXED 28 July 2026
 
-`src/parse.js` matches colours against a hardcoded `BASE_COLOURS` +
-`MODIFIERS` list. Tested against the 19 real catalog colours, **13 of 19 pass**:
+**Was:** `src/parse.js` built colours from a modifier list plus a base list,
+which matched the base word on its own. Six of the 19 catalog colours collapsed
+— `Council Green`, `Grass Green` and `Mud Green` to `Green`, `Ugly Purple` to
+`Purple`, `Ugly Red` and `Red (AJ Bush)` to `Red`. They failed **silently**: a
+colour *was* found, so the "no colour found" flag never fired, and a Council
+Green bin was logged as `240L Bin Green`, a product that does not exist.
 
-| catalog colour | parsed as |
-| --- | --- |
-| Council Green | Green |
-| Grass Green | Green |
-| Mud Green | Green |
-| Ugly Purple | Purple |
-| Ugly Red | Red |
-| Red (AJ Bush) | Red |
+**Now:** matching is against `CATALOG_COLOURS` — whole names, longest first —
+so a qualified colour always beats the bare colour inside it. Recognised
+colours outside the catalog are still recorded but flagged
+`colour "X" is not in the product catalog`. All 19 catalog colours are covered
+by tests in `test/parse.test.js`.
 
-These fail **silently**: a colour *was* found, so the "no colour found" review
-flag never fires. A real sale of a Council Green bin is logged as
-`240L Bin Green` — a product that does not exist — and nothing surfaces it.
-
-This is a live bug in invoice-checker today, independent of the integration.
-
-**The fix is the integration.** Drop the hardcoded colour list; resolve
-descriptions against the catalog instead, longest-match-wins, and send anything
-unmatched to the Needs review sheet. The catalog becomes the single source of
-truth for what colours exist and drift becomes impossible.
-
-To reproduce the check, write a throwaway script that runs `parseLineItem` over
-`240L bin ${colour} complete` for each of the 19 colours above and compares
-`components[0].colour` to the input.
+**Still to do in phase 1:** `CATALOG_COLOURS` is a hand-copied snapshot of the
+catalog, so the two can drift. Phase 1 replaces it with a live read, after which
+drift is impossible. The structure is already right — it is a list swap, not a
+rewrite.
 
 ## Blocker 2 — customer PII must not go into this database
 
@@ -190,7 +181,9 @@ Each phase is independently useful and independently shippable.
 
 1. **Catalog-driven parsing.** invoice-checker reads the item list from
    Supabase, caches it to disk, and resolves descriptions to real SKUs.
-   Fixes Blocker 1. No writes, no schema change, no app change.
+   Replaces the `CATALOG_COLOURS` snapshot with a live read, ending the drift
+   risk left over from the Blocker 1 fix. No writes, no schema change, no app
+   change.
 2. **Push invoices.** Create the two tables. invoice-checker upserts via a
    service-role key, keyed on invoice number so re-scans stay idempotent
    (it already re-reads changed PDFs and regenerates from the ledger).

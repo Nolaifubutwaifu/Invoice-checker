@@ -9,25 +9,46 @@
  *   "1100L Lid Pins", "80L HD Wheels", "Freight", "Pickup"
  */
 
-// Colours seen on bins and lids. Two-word colours are matched before one-word
-// ones so "Dark Green" never comes back as just "Green".
-const MODIFIERS = [
-  'dark', 'light', 'pale', 'bright', 'deep', 'mid', 'hot', 'sky', 'forest',
-  'royal', 'olive', 'lime', 'navy', 'burnt', 'off',
+/**
+ * The colours that actually exist in the product catalog (the inventory-app
+ * item list). Taken from the live catalog, so these are the only colours a
+ * bin or lid can really be.
+ *
+ * Several of them are ordinary colour words with a qualifier that is not a
+ * generic modifier — "Council Green", "Ugly Red". An earlier version of this
+ * file built colours from a modifier list plus a base list, which matched the
+ * base word alone and silently turned "Council Green" into "Green": a product
+ * that does not exist. Matching is now against whole names, longest first.
+ *
+ * INTEGRATION_PLAN.md phase 1 replaces this constant with a live read of the
+ * catalog, so the two can no longer drift apart.
+ */
+const CATALOG_COLOURS = [
+  'Black', 'Council Green', 'Dark Green', 'Dark Grey', 'Grass Green',
+  'Light Blue', 'Light Grey', 'Lime Green', 'Mud Green', 'Orange', 'Purple',
+  'Red', 'Red (AJ Bush)', 'Royal Blue', 'Sky Blue', 'Ugly Purple', 'Ugly Red',
+  'White', 'Yellow',
 ];
 
-const BASE_COLOURS = [
-  'red', 'blue', 'green', 'yellow', 'black', 'grey', 'gray', 'white', 'purple',
-  'orange', 'brown', 'beige', 'burgundy', 'maroon', 'lime', 'navy', 'charcoal',
-  'silver', 'pink', 'teal', 'gold', 'cream', 'violet', 'aqua', 'tan', 'ivory',
-  'magenta', 'bronze', 'olive', 'terracotta',
+/**
+ * Colours worth recognising that are not in the catalog. Matching one is not
+ * an error — it may be a new line — but it is flagged for review, because it
+ * usually means either a new product or a description we have misread.
+ */
+const OTHER_COLOURS = [
+  'Blue', 'Green', 'Grey', 'Brown', 'Beige', 'Burgundy', 'Maroon', 'Navy',
+  'Navy Blue', 'Charcoal', 'Silver', 'Pink', 'Teal', 'Gold', 'Cream', 'Violet',
+  'Aqua', 'Tan', 'Ivory', 'Magenta', 'Bronze', 'Olive', 'Terracotta', 'Lime',
+  'Dark Blue', 'Dark Red', 'Light Green', 'Pale Blue', 'Bright Green',
+  'Forest Green', 'Mid Blue', 'Burnt Orange',
 ];
 
-// Spelling normalisation applied after a colour is recognised.
+// Alternative spellings, mapped to the catalog's own wording.
 const COLOUR_ALIASES = new Map([
   ['gray', 'Grey'],
   ['dark gray', 'Dark Grey'],
   ['light gray', 'Light Grey'],
+  ['aj bush red', 'Red (AJ Bush)'],
 ]);
 
 // If any of these words appear, the line is a spare part or a service, not a
@@ -51,24 +72,60 @@ const FILLER_WORDS = new Set([
   'with', 'and', 'the', 'a', 'x', 'new', 'plastic', 'mgb',
 ]);
 
-const titleCase = (s) =>
-  s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+const titleCase = (s) => s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Reduces a colour to a comparable key: lowercase, punctuation dropped. */
+const colourKey = (s) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+const CATALOG_KEYS = new Set(CATALOG_COLOURS.map(colourKey));
+
+/** Every recognised spelling, mapped to the catalog's own wording. */
+const CANONICAL = new Map();
+for (const colour of [...CATALOG_COLOURS, ...OTHER_COLOURS]) {
+  CANONICAL.set(colourKey(colour), colour);
+}
+for (const [alias, colour] of COLOUR_ALIASES) {
+  CANONICAL.set(colourKey(alias), colour);
+}
+
+/**
+ * One alternation over every spelling, longest first so that "Council Green"
+ * wins over "Green" and "Dark Grey" over "Grey". Punctuation in a name is
+ * optional when matching, so "Red (AJ Bush)" and "Red AJ Bush" both hit.
+ */
+const COLOUR_RE = (() => {
+  const spellings = new Set();
+  for (const key of CANONICAL.keys()) spellings.add(key);
+  for (const colour of [...CATALOG_COLOURS, ...OTHER_COLOURS]) spellings.add(colour);
+
+  const alternation = [...spellings]
+    .sort((a, b) => b.length - a.length)
+    .map((s) => escapeRe(s).replace(/\s+/g, '[\\s\\-()]+'))
+    .join('|');
+
+  // Letter-bounded rather than \b, so a trailing ")" does not break the match
+  // and "Greenway" is still not read as "Green".
+  return new RegExp(`(?<![A-Za-z])(?:${alternation})(?![A-Za-z])`, 'gi');
+})();
 
 /**
  * Finds every colour phrase in the text.
- * @returns {{colour: string, index: number}[]} in order of appearance
+ * @returns {{colour: string, index: number, inCatalog: boolean}[]} in order
  */
 function findColours(text) {
-  const modAlt = MODIFIERS.join('|');
-  const baseAlt = BASE_COLOURS.join('|');
-  // Optional modifier, then a base colour. Word-bounded so "Greenway" is safe.
-  const re = new RegExp(`\\b(?:(${modAlt})[\\s-]+)?(${baseAlt})\\b`, 'gi');
   const out = [];
-  for (const m of text.matchAll(re)) {
-    const raw = m[0].replace(/[\s-]+/g, ' ').toLowerCase().trim();
-    // "lime green" / "navy blue" are one colour; a bare "lime" or "navy" is too.
-    const colour = COLOUR_ALIASES.get(raw) ?? titleCase(raw);
-    out.push({ colour, index: m.index, length: m[0].length });
+  for (const m of text.matchAll(COLOUR_RE)) {
+    const key = colourKey(m[0]);
+    const colour = CANONICAL.get(key) ?? titleCase(key);
+    out.push({
+      colour,
+      index: m.index,
+      length: m[0].length,
+      inCatalog: CATALOG_KEYS.has(colourKey(colour)),
+    });
   }
   return out;
 }
@@ -169,13 +226,29 @@ export function parseLineItem(description) {
 
   if (!colours.length) review.push('no colour found');
 
+  // A colour we can name but that no catalog product uses. Usually a new line
+  // or a description we have read wrongly, and worth a human glance either way.
+  for (const c of colours) {
+    if (!c.inCatalog) {
+      review.push(`colour "${c.colour}" is not in the product catalog`);
+    }
+  }
+
   const kind = complete ? 'complete' : isBin && isLid ? 'bin+lid' : isBin ? 'bin' : 'lid';
 
   // Anything left after removing size, colours and the structural words is a
   // product variant worth keeping — "Vermin", "HD", "Vented".
-  let leftover = text;
+  // Cut the colours out by position rather than by pattern: a name like
+  // "Red (AJ Bush)" is not a valid regex on its own, and the same colour can
+  // appear twice.
+  let leftover = '';
+  let cursor = 0;
+  for (const c of [...colours].sort((a, b) => a.index - b.index)) {
+    leftover += `${text.slice(cursor, c.index)} `;
+    cursor = c.index + c.length;
+  }
+  leftover += text.slice(cursor);
   if (sizeMatch) leftover = leftover.replace(sizeMatch[0], ' ');
-  for (const c of colours) leftover = leftover.replace(new RegExp(c.colour, 'i'), ' ');
   const variant = leftover
     .split(/[^A-Za-z0-9]+/)
     .filter((w) => w && !FILLER_WORDS.has(w.toLowerCase()))
