@@ -1,4 +1,12 @@
 node_modules/
+.next/
+next-env.d.ts
+.env
+.env.local
+.vercel
+
+# Copied from pdfjs-dist before dev/build, not source.
+public/pdf.worker.min.mjs
 
 # Invoices and anything derived from them contain customer names, addresses,
 # phone numbers and bank details. None of it belongs on GitHub.

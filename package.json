@@ -9,11 +9,20 @@
     "watch": "node src/index.js watch",
     "rebuild": "node src/index.js rebuild",
     "show": "node scripts/show-sheet.js bin-and-lid-sales.xlsx",
-    "test": "node --test"
+    "test": "node --test \"test/**/*.test.js\"",
+    "predev": "node scripts/copy-pdf-worker.mjs",
+    "dev": "next dev",
+    "prebuild": "node scripts/copy-pdf-worker.mjs",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.9",
     "exceljs": "^4.4.0",
-    "pdfjs-dist": "^4.10.38"
+    "next": "^16.2.12",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "license": "UNLICENSED",
   "private": true

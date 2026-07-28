@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { extractInvoice } from './pdf.js';
-import { parseLineItem } from './parse.js';
+import { recordsFromInvoice } from './records.js';
 import { loadLedger, saveLedger, needsScan, replaceRecords } from './ledger.js';
 import { writeWorkbook } from './sheet.js';
 
@@ -56,37 +56,7 @@ async function findPdfs(dir, cfg, depth = 0) {
 
 /** Reads one invoice and returns a record per bin/lid line item. */
 async function recordsFor(filePath) {
-  const invoice = await extractInvoice(filePath);
-  const records = [];
-
-  invoice.lines.forEach((line, i) => {
-    const parsed = parseLineItem(line.description);
-    if (!parsed) return;
-
-    const { components, ...common } = parsed;
-    components.forEach((c, j) => {
-      records.push({
-        id: `${path.basename(filePath)}#${i}.${j}`,
-        file: filePath,
-        invoiceNumber: invoice.invoiceNumber,
-        issueDate: invoice.issueDate,
-        customer: invoice.customer,
-        itemId: line.itemId,
-        description: line.description,
-        qty: line.qty ?? 1,
-        // Only the priced component carries the money; the other came bundled
-        // with it on the same invoice line.
-        unitPrice: c.priced ? line.unitPrice : null,
-        amount: c.priced ? line.amount : null,
-        component: c.component,
-        colour: c.colour,
-        product: c.product,
-        ...common,
-      });
-    });
-  });
-
-  return records;
+  return recordsFromInvoice(await extractInvoice(filePath), filePath);
 }
 
 async function scan({ force = false } = {}) {

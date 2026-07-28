@@ -206,9 +206,15 @@ Each phase is independently useful and independently shippable.
 
 ## Current state of invoice-checker
 
-Working and pushed. `npm test` (21 tests) passes; `npm run scan` reads the five
+Working and pushed. `npm test` (64 tests) passes; `npm run scan` reads the five
 sample PDFs and produces `bin-and-lid-sales.xlsx` with Sales log / Totals /
 Needs review sheets. See `README.md` for commands.
+
+There is also a **website** in `app/` (Next 16, deploys to Vercel — see
+`DEPLOYING.md`), sharing the CLI's parser. Its Dashboard page already contains
+the real `invoice_lines` query and renders a "there are no invoice tables yet"
+state, so **phase 2 lights it up with no further front-end work**. Phase 4 in
+the list above is therefore mostly done already.
 
 Environment notes: Python is **not** installed on this machine (only the
 Microsoft Store stub) — use Node. The GitHub CLI `gh` is not installed either,

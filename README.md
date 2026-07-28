@@ -1,8 +1,14 @@
 # invoice-checker
 
-Watches a folder for Brisbins invoice PDFs, picks out the **bins and lids** sold,
-and keeps a spreadsheet up to date. Spare parts, freight and pickup notes are
-ignored.
+Picks the **bins and lids** out of Brisbins invoice PDFs and records them on a
+spreadsheet. Spare parts, freight and pickup notes are ignored.
+
+Two ways in, sharing one parser:
+
+- **A command line scanner** that watches a folder on the warehouse PC and keeps
+  an `.xlsx` up to date.
+- **A website** (`app/`) for dropping invoices in by hand from any device, which
+  deploys to Vercel. See [DEPLOYING.md](DEPLOYING.md).
 
 ## Setup
 
@@ -12,7 +18,20 @@ npm install
 
 Requires Node.js (tested on v24).
 
-## Use
+## The website
+
+```bash
+npm run dev
+```
+
+Drag invoice PDFs onto the page to see the bins and lids in them and download
+the spreadsheet. **The PDFs are parsed in the browser and never uploaded** —
+they carry customer names, addresses and bank details.
+
+The Dashboard page reads from Supabase and stays in a "Not connected" state
+until phase 2 of [INTEGRATION_PLAN.md](INTEGRATION_PLAN.md) is built.
+
+## The folder scanner
 
 ```bash
 npm run scan
