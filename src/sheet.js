@@ -37,13 +37,13 @@ function buildSalesLog(workbook, records) {
     { header: 'Invoice', key: 'invoiceNumber', width: 12 },
     { header: 'Date', key: 'date', width: 12 },
     { header: 'Customer', key: 'customer', width: 24 },
-    { header: 'Product', key: 'product', width: 40 },
+    { header: 'Product', key: 'product', width: 30 },
     { header: 'Size', key: 'size', width: 8 },
-    { header: 'Type', key: 'type', width: 16 },
-    { header: 'Bin colour', key: 'binColour', width: 14 },
-    { header: 'Lid colour', key: 'lidColour', width: 14 },
+    { header: 'Item', key: 'component', width: 8 },
+    { header: 'Colour', key: 'colour', width: 14 },
     { header: 'Variant', key: 'variant', width: 12 },
     { header: 'Qty', key: 'qty', width: 7 },
+    { header: 'Sold as', key: 'soldAs', width: 14 },
     { header: 'Unit price', key: 'unitPrice', width: 11 },
     { header: 'Amount', key: 'amount', width: 11 },
     { header: 'Source file', key: 'sourceFile', width: 26 },
@@ -52,7 +52,11 @@ function buildSalesLog(workbook, records) {
 
   const sorted = [...records].sort((a, b) => {
     const d = (toDate(a.issueDate)?.getTime() ?? 0) - (toDate(b.issueDate)?.getTime() ?? 0);
-    return d !== 0 ? d : String(a.invoiceNumber).localeCompare(String(b.invoiceNumber));
+    if (d !== 0) return d;
+    const inv = String(a.invoiceNumber).localeCompare(String(b.invoiceNumber));
+    if (inv !== 0) return inv;
+    // Keep the two halves of one invoice line together, bin above lid.
+    return String(a.id).localeCompare(String(b.id));
   });
 
   for (const r of sorted) {
@@ -62,11 +66,11 @@ function buildSalesLog(workbook, records) {
       customer: r.customer,
       product: r.product,
       size: r.size,
-      type: TYPE_LABELS[r.kind] ?? r.kind,
-      binColour: r.binColour,
-      lidColour: r.lidColour,
+      component: r.component,
+      colour: r.colour,
       variant: r.variant,
       qty: r.qty,
+      soldAs: r.soldAs,
       unitPrice: r.unitPrice,
       amount: r.amount,
       sourceFile: path.basename(r.file),
@@ -81,23 +85,16 @@ function buildSalesLog(workbook, records) {
   return sheet;
 }
 
-const TYPE_LABELS = {
-  complete: 'Bin + lid (complete)',
-  'bin+lid': 'Bin + lid',
-  bin: 'Bin only',
-  lid: 'Lid only',
-};
-
 function buildTotals(workbook, records) {
   const sheet = workbook.addWorksheet('Totals');
   sheet.columns = [
-    { header: 'Product', key: 'product', width: 40 },
+    { header: 'Product', key: 'product', width: 30 },
     { header: 'Size', key: 'size', width: 8 },
-    { header: 'Type', key: 'type', width: 20 },
-    { header: 'Bin colour', key: 'binColour', width: 14 },
-    { header: 'Lid colour', key: 'lidColour', width: 14 },
+    { header: 'Item', key: 'component', width: 8 },
+    { header: 'Colour', key: 'colour', width: 14 },
+    { header: 'Variant', key: 'variant', width: 12 },
     { header: 'Qty sold', key: 'qty', width: 10 },
-    { header: 'Total value', key: 'amount', width: 13 },
+    { header: 'Value', key: 'amount', width: 13 },
     { header: 'Invoices', key: 'invoices', width: 10 },
   ];
 
@@ -108,17 +105,19 @@ function buildTotals(workbook, records) {
       groups.set(key, {
         product: r.product,
         size: r.size,
-        type: TYPE_LABELS[r.kind] ?? r.kind,
-        binColour: r.binColour,
-        lidColour: r.lidColour,
+        component: r.component,
+        colour: r.colour,
+        variant: r.variant,
         qty: 0,
         amount: 0,
+        priced: false,
         invoices: new Set(),
       });
     }
     const g = groups.get(key);
     g.qty += r.qty ?? 0;
     g.amount += r.amount ?? 0;
+    if (r.amount !== null && r.amount !== undefined) g.priced = true;
     g.invoices.add(r.invoiceNumber);
   }
 
@@ -126,7 +125,15 @@ function buildTotals(workbook, records) {
     (a, b) => b.qty - a.qty || a.product.localeCompare(b.product),
   );
 
-  for (const g of rows) sheet.addRow({ ...g, invoices: g.invoices.size });
+  for (const g of rows) {
+    sheet.addRow({
+      ...g,
+      // A lid that only ever shipped bundled with a bin has no value of its
+      // own; showing 0 would read as a giveaway rather than "priced with the bin".
+      amount: g.priced ? g.amount : null,
+      invoices: g.invoices.size,
+    });
+  }
 
   if (rows.length) {
     const total = sheet.addRow({

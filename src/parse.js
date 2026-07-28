@@ -183,34 +183,51 @@ export function parseLineItem(description) {
     .join(' ')
     .trim();
 
+  // Bins and lids are stocked separately, so one invoice line becomes one row
+  // per physical component. A complete set yields a bin row and a lid row, each
+  // carrying the line's full quantity.
+  const components = [];
+  if (isBin) {
+    components.push({ component: 'Bin', colour: binColour });
+  }
+  if (isLid || complete) {
+    components.push({ component: 'Lid', colour: lidColour });
+  }
+
+  // Only the first component carries the money, otherwise a bundled line would
+  // be counted twice in the value totals. The other is priced as part of the set.
+  for (const [i, c] of components.entries()) {
+    c.priced = i === 0;
+    c.product = buildProductName({ size, component: c.component, colour: c.colour, variant });
+  }
+
   return {
     size,
     kind,
+    soldAs: SOLD_AS[kind],
     binColour,
     lidColour,
     variant,
-    product: buildProductName({ size, kind, binColour, lidColour, variant }),
+    components,
     review,
   };
 }
 
+const SOLD_AS = {
+  complete: 'Complete set',
+  'bin+lid': 'Bin + lid',
+  bin: 'Bin only',
+  lid: 'Lid only',
+};
+
 /**
- * Canonical product name, written the way Brisbins writes it: size first, then
- * "complete" if the bin and lid match, otherwise both colours spelled out.
+ * Canonical name for a single component, in Brisbins' order: size first, then
+ * the variant, then bin or lid, then the colour.
  */
-export function buildProductName({ size, kind, binColour, lidColour, variant }) {
-  const parts = [size];
-  const v = variant ? ` ${variant}` : '';
-
-  if (kind === 'complete') {
-    parts.push(`Bin${v}`, binColour, 'Complete');
-  } else if (kind === 'bin+lid') {
-    parts.push(`Bin${v}`, binColour, '/', lidColour, 'Lid');
-  } else if (kind === 'bin') {
-    parts.push(`Bin${v}`, binColour);
-  } else {
-    parts.push(lidColour, `${variant} Lid`.trim());
-  }
-
-  return parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+export function buildProductName({ size, component, colour, variant }) {
+  return [size, variant, component, colour]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

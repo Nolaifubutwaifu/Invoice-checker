@@ -62,18 +62,27 @@ async function recordsFor(filePath) {
   invoice.lines.forEach((line, i) => {
     const parsed = parseLineItem(line.description);
     if (!parsed) return;
-    records.push({
-      id: `${path.basename(filePath)}#${i}`,
-      file: filePath,
-      invoiceNumber: invoice.invoiceNumber,
-      issueDate: invoice.issueDate,
-      customer: invoice.customer,
-      itemId: line.itemId,
-      description: line.description,
-      qty: line.qty ?? 1,
-      unitPrice: line.unitPrice,
-      amount: line.amount,
-      ...parsed,
+
+    const { components, ...common } = parsed;
+    components.forEach((c, j) => {
+      records.push({
+        id: `${path.basename(filePath)}#${i}.${j}`,
+        file: filePath,
+        invoiceNumber: invoice.invoiceNumber,
+        issueDate: invoice.issueDate,
+        customer: invoice.customer,
+        itemId: line.itemId,
+        description: line.description,
+        qty: line.qty ?? 1,
+        // Only the priced component carries the money; the other came bundled
+        // with it on the same invoice line.
+        unitPrice: c.priced ? line.unitPrice : null,
+        amount: c.priced ? line.amount : null,
+        component: c.component,
+        colour: c.colour,
+        product: c.product,
+        ...common,
+      });
     });
   });
 

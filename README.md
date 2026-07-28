@@ -54,12 +54,20 @@ Prints the spreadsheet to the terminal, without opening Excel.
 
 ## What the spreadsheet contains
 
-**Sales log** — one row per bin or lid line item: invoice number, date,
-customer, product, size, type, bin colour, lid colour, variant, quantity, unit
-price, amount, source file, and the raw description it came from.
+**Sales log** — **one row per item**, because bins and lids are stocked
+separately. An invoice line for 5 complete bins produces two rows: 5 bins and 5
+lids. Columns: invoice number, date, customer, product, size, item (Bin/Lid),
+colour, variant, quantity, how it was sold, unit price, amount, source file, and
+the raw description it came from.
+
+When a bin and lid were sold together on one line, the **whole line amount sits
+on the bin row and the lid row's amount is left blank** — the lid was not sold
+separately, and splitting the money across both rows would double-count the
+revenue. The "Sold as" column says which lines these were.
 
 **Totals** — quantity and value per unique product, most-sold first, with a
-grand total row.
+grand total row. A lid that has only ever shipped bundled with a bin shows a
+quantity but no value.
 
 **Needs review** — line items that were read but not with full confidence, with
 the reason (no size found, no colour found, more colours than expected). Nothing
@@ -67,16 +75,17 @@ is ever silently dropped or silently guessed; check this sheet occasionally.
 
 ## How descriptions are read
 
-Product names are rebuilt in Brisbins' own convention — size first, `complete`
-when the bin and lid match, otherwise both colours spelled out.
+Product names are rebuilt with the size first, as Brisbins writes them, then the
+variant, then bin or lid, then the colour.
 
-| Invoice description | Read as |
+| Invoice description | Rows produced |
 | --- | --- |
-| `240L bin purple complete` | `240L Bin Purple Complete` — bin and lid both purple |
-| `240L Wheelie Bin Dark Green/Light Blue Lid` | `240L Bin Dark Green / Light Blue Lid` |
-| `Red 240L Vermin lid` | `240L Red Vermin Lid` — lid only |
-| `1100L Lid Pins` | skipped — a part, despite saying "lid" |
-| `80L HD Wheels`, `Freight`, `Pickup` | skipped |
+| `240L bin purple complete` | `240L Bin Purple` + `240L Lid Purple` |
+| `240L Wheelie Bin Dark Green/Light Blue Lid` | `240L Bin Dark Green` + `240L Lid Light Blue` |
+| `Red 240L Vermin lid` | `240L Vermin Lid Red` |
+| `660L Bin Green` | `660L Bin Green` |
+| `1100L Lid Pins` | none — a part, despite saying "lid" |
+| `80L HD Wheels`, `Freight`, `Pickup` | none |
 
 A line counts as a sale when it names a bin or a lid and is not a spare part. An
 accessory bundled onto a bin (`240L Bin Green Complete with Lock`) still counts

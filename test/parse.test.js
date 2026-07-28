@@ -2,41 +2,54 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLineItem } from '../src/parse.js';
 
-test('bin and lid the same colour, written as "complete"', () => {
+/** Compact view of the components a description expands to. */
+const shape = (description) =>
+  parseLineItem(description).components.map(
+    (c) => `${c.product} (${c.priced ? 'priced' : 'bundled'})`,
+  );
+
+test('a complete set becomes a bin row and a lid row of the same colour', () => {
   const r = parseLineItem('240L bin purple complete');
   assert.equal(r.size, '240L');
   assert.equal(r.kind, 'complete');
-  assert.equal(r.binColour, 'Purple');
-  assert.equal(r.lidColour, 'Purple');
-  assert.equal(r.product, '240L Bin Purple Complete');
+  assert.equal(r.soldAs, 'Complete set');
+  assert.deepEqual(shape('240L bin purple complete'), [
+    '240L Bin Purple (priced)',
+    '240L Lid Purple (bundled)',
+  ]);
   assert.deepEqual(r.review, []);
 });
 
-test('bin and lid colours written separately', () => {
+test('bin and lid colours written separately become two rows', () => {
   const r = parseLineItem('240L Wheelie Bin Dark Green/Light Blue Lid');
-  assert.equal(r.size, '240L');
   assert.equal(r.kind, 'bin+lid');
-  assert.equal(r.binColour, 'Dark Green');
-  assert.equal(r.lidColour, 'Light Blue');
+  assert.equal(r.soldAs, 'Bin + lid');
+  assert.deepEqual(shape('240L Wheelie Bin Dark Green/Light Blue Lid'), [
+    '240L Bin Dark Green (priced)',
+    '240L Lid Light Blue (bundled)',
+  ]);
   assert.deepEqual(r.review, []);
 });
 
-test('lid on its own, with the colour written before the size', () => {
+test('lid on its own is a single row', () => {
   const r = parseLineItem('Red 240L Vermin lid');
   assert.equal(r.size, '240L');
   assert.equal(r.kind, 'lid');
-  assert.equal(r.binColour, '');
-  assert.equal(r.lidColour, 'Red');
   assert.equal(r.variant, 'Vermin');
-  assert.equal(r.product, '240L Red Vermin Lid');
+  assert.deepEqual(shape('Red 240L Vermin lid'), ['240L Vermin Lid Red (priced)']);
 });
 
-test('bin on its own', () => {
+test('bin on its own is a single row', () => {
   const r = parseLineItem('660L Bin Green');
   assert.equal(r.kind, 'bin');
-  assert.equal(r.binColour, 'Green');
-  assert.equal(r.lidColour, '');
-  assert.equal(r.product, '660L Bin Green');
+  assert.equal(r.soldAs, 'Bin only');
+  assert.deepEqual(shape('660L Bin Green'), ['660L Bin Green (priced)']);
+});
+
+test('only one component of a bundled line carries the money', () => {
+  const priced = parseLineItem('240L bin purple complete').components.filter((c) => c.priced);
+  assert.equal(priced.length, 1, 'exactly one component should be priced');
+  assert.equal(priced[0].component, 'Bin');
 });
 
 test('colour assignment is case insensitive', () => {
