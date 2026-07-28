@@ -1,0 +1,7 @@
+node_modules/
+
+# Invoices and anything derived from them contain customer names, addresses,
+# phone numbers and bank details. None of it belongs on GitHub.
+*.pdf
+*.xlsx
+data/

@@ -1,0 +1,7 @@
+{
+  "invoiceFolder": "C:\\Users\\Sales\\Desktop\\ai-projects",
+  "outputFile": "C:\\Users\\Sales\\Desktop\\ai-projects\\invoice-checker\\bin-and-lid-sales.xlsx",
+  "intervalMinutes": 10,
+  "recursive": true,
+  "ignoreFolders": ["node_modules", ".git", ".next", "dist", "build", "data"]
+}

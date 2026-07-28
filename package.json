@@ -1,0 +1,20 @@
+{
+  "name": "invoice-checker",
+  "version": "1.0.0",
+  "description": "Scans Brisbins invoice PDFs for bins and lids sold, and records them on a spreadsheet.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "scan": "node src/index.js scan",
+    "watch": "node src/index.js watch",
+    "rebuild": "node src/index.js rebuild",
+    "show": "node scripts/show-sheet.js bin-and-lid-sales.xlsx",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
