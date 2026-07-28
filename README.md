@@ -57,17 +57,16 @@ Prints the spreadsheet to the terminal, without opening Excel.
 **Sales log** — **one row per item**, because bins and lids are stocked
 separately. An invoice line for 5 complete bins produces two rows: 5 bins and 5
 lids. Columns: invoice number, date, customer, product, size, item (Bin/Lid),
-colour, variant, quantity, how it was sold, unit price, amount, source file, and
-the raw description it came from.
+colour, variant, quantity, unit price, source file, and the raw description it
+came from.
 
-When a bin and lid were sold together on one line, the **whole line amount sits
-on the bin row and the lid row's amount is left blank** — the lid was not sold
-separately, and splitting the money across both rows would double-count the
-revenue. The "Sold as" column says which lines these were.
+Unit price is the price of the invoice line it came from, so on a bin sold with
+a matching lid it is the price of the pair, shown against the bin. The lid row
+is left blank rather than guessing at a split. The raw description column always
+shows what was actually invoiced.
 
-**Totals** — quantity and value per unique product, most-sold first, with a
-grand total row. A lid that has only ever shipped bundled with a bin shows a
-quantity but no value.
+**Totals** — quantity per unique product, most-sold first, with a grand total
+row. This is a count of what went out the door, not a revenue report.
 
 **Needs review** — line items that were read but not with full confidence, with
 the reason (no size found, no colour found, more colours than expected). Nothing

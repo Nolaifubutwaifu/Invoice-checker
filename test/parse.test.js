@@ -12,7 +12,6 @@ test('a complete set becomes a bin row and a lid row of the same colour', () => 
   const r = parseLineItem('240L bin purple complete');
   assert.equal(r.size, '240L');
   assert.equal(r.kind, 'complete');
-  assert.equal(r.soldAs, 'Complete set');
   assert.deepEqual(shape('240L bin purple complete'), [
     '240L Bin Purple (priced)',
     '240L Lid Purple (bundled)',
@@ -23,7 +22,6 @@ test('a complete set becomes a bin row and a lid row of the same colour', () => 
 test('bin and lid colours written separately become two rows', () => {
   const r = parseLineItem('240L Wheelie Bin Dark Green/Light Blue Lid');
   assert.equal(r.kind, 'bin+lid');
-  assert.equal(r.soldAs, 'Bin + lid');
   assert.deepEqual(shape('240L Wheelie Bin Dark Green/Light Blue Lid'), [
     '240L Bin Dark Green (priced)',
     '240L Lid Light Blue (bundled)',
@@ -42,7 +40,6 @@ test('lid on its own is a single row', () => {
 test('bin on its own is a single row', () => {
   const r = parseLineItem('660L Bin Green');
   assert.equal(r.kind, 'bin');
-  assert.equal(r.soldAs, 'Bin only');
   assert.deepEqual(shape('660L Bin Green'), ['660L Bin Green (priced)']);
 });
 

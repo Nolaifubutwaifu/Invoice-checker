@@ -43,9 +43,7 @@ function buildSalesLog(workbook, records) {
     { header: 'Colour', key: 'colour', width: 14 },
     { header: 'Variant', key: 'variant', width: 12 },
     { header: 'Qty', key: 'qty', width: 7 },
-    { header: 'Sold as', key: 'soldAs', width: 14 },
     { header: 'Unit price', key: 'unitPrice', width: 11 },
-    { header: 'Amount', key: 'amount', width: 11 },
     { header: 'Source file', key: 'sourceFile', width: 26 },
     { header: 'Raw description', key: 'description', width: 42 },
   ];
@@ -70,9 +68,7 @@ function buildSalesLog(workbook, records) {
       colour: r.colour,
       variant: r.variant,
       qty: r.qty,
-      soldAs: r.soldAs,
       unitPrice: r.unitPrice,
-      amount: r.amount,
       sourceFile: path.basename(r.file),
       description: r.description,
     });
@@ -80,7 +76,6 @@ function buildSalesLog(workbook, records) {
 
   sheet.getColumn('date').numFmt = 'dd/mm/yyyy';
   sheet.getColumn('unitPrice').numFmt = '#,##0.00';
-  sheet.getColumn('amount').numFmt = '#,##0.00';
   styleHeader(sheet);
   return sheet;
 }
@@ -94,7 +89,6 @@ function buildTotals(workbook, records) {
     { header: 'Colour', key: 'colour', width: 14 },
     { header: 'Variant', key: 'variant', width: 12 },
     { header: 'Qty sold', key: 'qty', width: 10 },
-    { header: 'Value', key: 'amount', width: 13 },
     { header: 'Invoices', key: 'invoices', width: 10 },
   ];
 
@@ -109,15 +103,11 @@ function buildTotals(workbook, records) {
         colour: r.colour,
         variant: r.variant,
         qty: 0,
-        amount: 0,
-        priced: false,
         invoices: new Set(),
       });
     }
     const g = groups.get(key);
     g.qty += r.qty ?? 0;
-    g.amount += r.amount ?? 0;
-    if (r.amount !== null && r.amount !== undefined) g.priced = true;
     g.invoices.add(r.invoiceNumber);
   }
 
@@ -125,27 +115,17 @@ function buildTotals(workbook, records) {
     (a, b) => b.qty - a.qty || a.product.localeCompare(b.product),
   );
 
-  for (const g of rows) {
-    sheet.addRow({
-      ...g,
-      // A lid that only ever shipped bundled with a bin has no value of its
-      // own; showing 0 would read as a giveaway rather than "priced with the bin".
-      amount: g.priced ? g.amount : null,
-      invoices: g.invoices.size,
-    });
-  }
+  for (const g of rows) sheet.addRow({ ...g, invoices: g.invoices.size });
 
   if (rows.length) {
     const total = sheet.addRow({
       product: 'TOTAL',
       qty: rows.reduce((s, g) => s + g.qty, 0),
-      amount: rows.reduce((s, g) => s + g.amount, 0),
     });
     total.font = { bold: true };
     total.border = { top: { style: 'thin' } };
   }
 
-  sheet.getColumn('amount').numFmt = '#,##0.00';
   styleHeader(sheet);
   return sheet;
 }

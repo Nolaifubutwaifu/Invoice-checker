@@ -204,7 +204,6 @@ export function parseLineItem(description) {
   return {
     size,
     kind,
-    soldAs: SOLD_AS[kind],
     binColour,
     lidColour,
     variant,
@@ -212,13 +211,6 @@ export function parseLineItem(description) {
     review,
   };
 }
-
-const SOLD_AS = {
-  complete: 'Complete set',
-  'bin+lid': 'Bin + lid',
-  bin: 'Bin only',
-  lid: 'Lid only',
-};
 
 /**
  * Canonical name for a single component, in Brisbins' order: size first, then
